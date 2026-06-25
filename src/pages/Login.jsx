@@ -55,14 +55,17 @@ export default function Login() {
       }
 
       // 2º: verifica por e-mail (conta criada via e-mail/senha com uid diferente)
+      // Neste caso o UID do Google é diferente do UID original — precisamos criar
+      // um novo documento Firestore com o UID correto do Google.
+      // Redirecionar para /completar-cadastro (que usa setDoc com user.uid do Google).
       const q = query(
         collection(db, "usuarios"),
         where("email", "==", user.email)
       );
       const snapEmail = await getDocs(q);
       if (!snapEmail.empty) {
-        // Perfil existe com outro uid — vai direto pro dashboard
-        navigate("/dashboard");
+        // Perfil existe mas com uid diferente — precisa criar doc com novo uid
+        navigate("/completar-cadastro");
         return;
       }
 

@@ -1,9 +1,9 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { Link } from "react-router-dom";
 import { doc, getDoc } from "firebase/firestore";
 import { db } from "../services/firebase";
 import { useAuth } from "../contexts/AuthContext";
-import { calcularMultiplicador } from "../utils/calculadora";
+import { calcularMultiplicador, getInicioSemanaAtual } from "../utils/calculadora";
 import {
   BookOpen,
   Trophy,
@@ -66,11 +66,22 @@ export default function Dashboard() {
   const gradiente = AREA_COLORS[dadosUsuario?.areaFoco] || "from-violet-600 to-purple-500";
   const badgeColor = AREA_BADGE_COLORS[dadosUsuario?.areaFoco] || "bg-violet-900/50 text-violet-300 border-violet-700";
 
+  // Respeita o reset semanal antes de calcular o multiplicador
+  const minutosEfetivos = useMemo(() => {
+    if (!dadosUsuario) return 0;
+    const inicioSemana = getInicioSemanaAtual();
+    const semanaTs = dadosUsuario.semanaInicio?.toDate
+      ? dadosUsuario.semanaInicio.toDate()
+      : null;
+    const novaSemana = !semanaTs || semanaTs < inicioSemana;
+    return novaSemana ? 0 : (dadosUsuario.minutosFacilidadeNestaSemana || 0);
+  }, [dadosUsuario]);
+
   const multiplicadorInfo = dadosUsuario?.disciplinaFacilidade
     ? calcularMultiplicador(
         dadosUsuario.disciplinaFacilidade,
         dadosUsuario.disciplinaFacilidade,
-        dadosUsuario.minutosFacilidadeNestaSemana ?? 0
+        minutosEfetivos
       )
     : null;
 
