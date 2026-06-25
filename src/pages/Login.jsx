@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { signInWithEmailAndPassword, signInWithPopup } from "firebase/auth";
-import { doc, getDoc } from "firebase/firestore";
+import { doc, getDoc, collection, query, where, getDocs } from "firebase/firestore";
 import { auth, db, googleProvider } from "../services/firebase";
 import { Mail, Lock, BookOpen, AlertCircle, Eye, EyeOff } from "lucide-react";
 
@@ -47,18 +47,40 @@ export default function Login() {
     try {
       const { user } = await signInWithPopup(auth, googleProvider);
 
-      // Verifica se já existe perfil no Firestore
-      const snap = await getDoc(doc(db, "usuarios", user.uid));
-
-      if (snap.exists()) {
-        // Usuário já cadastrado → Dashboard
+      // 1º: verifica por UID (caso mais comum)
+      const snapUid = await getDoc(doc(db, "usuarios", user.uid));
+      if (snapUid.exists()) {
         navigate("/dashboard");
-      } else {
-        // Usuário novo → página de onboarding
-        navigate("/completar-cadastro");
+        return;
       }
+
+      // 2º: verifica por e-mail (conta criada via e-mail/senha com uid diferente)
+      const q = query(
+        collection(db, "usuarios"),
+        where("email", "==", user.email)
+      );
+      const snapEmail = await getDocs(q);
+      if (!snapEmail.empty) {
+        // Perfil existe com outro uid — vai direto pro dashboard
+        navigate("/dashboard");
+        return;
+      }
+
+      // Usuário realmente novo → onboarding
+      navigate("/completar-cadastro");
     } catch (error) {
-      if (error.code === "auth/popup-closed-by-user") return;
+      if (
+        error.code === "auth/popup-closed-by-user" ||
+        error.code === "auth/cancelled-popup-request"
+      ) {
+        return;
+      }
+      if (error.code === "auth/account-exists-with-different-credential") {
+        setErro(
+          "Esse e-mail já está cadastrado com e-mail e senha. Entre usando e-mail e senha."
+        );
+        return;
+      }
       setErro("Erro ao entrar com Google. Tente novamente.");
     } finally {
       setCarregandoGoogle(false);
