@@ -55,18 +55,7 @@ export default function Dashboard() {
     buscarDados();
   }, [user]);
 
-  if (carregando) {
-    return (
-      <div className="min-h-screen bg-gray-950 flex items-center justify-center">
-        <Loader2 className="w-8 h-8 text-violet-500 animate-spin" />
-      </div>
-    );
-  }
-
-  const gradiente = AREA_COLORS[dadosUsuario?.areaFoco] || "from-violet-600 to-purple-500";
-  const badgeColor = AREA_BADGE_COLORS[dadosUsuario?.areaFoco] || "bg-violet-900/50 text-violet-300 border-violet-700";
-
-  // Respeita o reset semanal antes de calcular o multiplicador
+  // ─── Hooks ANTES de qualquer return condicional (React Rules of Hooks) ───
   const minutosEfetivos = useMemo(() => {
     if (!dadosUsuario) return 0;
     const inicioSemana = getInicioSemanaAtual();
@@ -77,13 +66,26 @@ export default function Dashboard() {
     return novaSemana ? 0 : (dadosUsuario.minutosFacilidadeNestaSemana || 0);
   }, [dadosUsuario]);
 
-  const multiplicadorInfo = dadosUsuario?.disciplinaFacilidade
-    ? calcularMultiplicador(
-        dadosUsuario.disciplinaFacilidade,
-        dadosUsuario.disciplinaFacilidade,
-        minutosEfetivos
-      )
-    : null;
+  const multiplicadorInfo = useMemo(() => {
+    if (!dadosUsuario?.disciplinaFacilidade) return null;
+    return calcularMultiplicador(
+      dadosUsuario.disciplinaFacilidade,
+      dadosUsuario.disciplinaFacilidade,
+      minutosEfetivos
+    );
+  }, [dadosUsuario, minutosEfetivos]);
+
+  // ─── Guards de renderização ───────────────────────────────────────────────
+  if (carregando) {
+    return (
+      <div className="min-h-screen bg-gray-950 flex items-center justify-center">
+        <Loader2 className="w-8 h-8 text-violet-500 animate-spin" />
+      </div>
+    );
+  }
+
+  const gradiente = AREA_COLORS[dadosUsuario?.areaFoco] || "from-violet-600 to-purple-500";
+  const badgeColor = AREA_BADGE_COLORS[dadosUsuario?.areaFoco] || "bg-violet-900/50 text-violet-300 border-violet-700";
 
   return (
     <div className="min-h-screen bg-gray-950 text-white pb-24">
