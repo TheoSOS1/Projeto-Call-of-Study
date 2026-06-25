@@ -32,6 +32,7 @@ const AREA_BADGE_COLORS = {
 
 export default function Dashboard() {
   const { user, logout } = useAuth();
+
   const [dadosUsuario, setDadosUsuario] = useState(null);
   const [carregando, setCarregando] = useState(true);
 
@@ -190,6 +191,7 @@ export default function Dashboard() {
           </div>
           <ArrowRight className="w-5 h-5 text-white/60" />
         </Link>
+
       </main>
 
       <BottomNav />

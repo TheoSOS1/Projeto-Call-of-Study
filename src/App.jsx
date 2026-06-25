@@ -9,6 +9,7 @@ import Lancamento from "./pages/Lancamento";
 import Historico from "./pages/Historico";
 import Ranking from "./pages/Ranking";
 import Criterios from "./pages/Criterios";
+import Perfil from "./pages/Perfil";
 
 export default function App() {
   return (
@@ -58,6 +59,10 @@ export default function App() {
           <Route
             path="/criterios"
             element={<RotaProtegida><Criterios /></RotaProtegida>}
+          />
+          <Route
+            path="/perfil"
+            element={<RotaProtegida><Perfil /></RotaProtegida>}
           />
 
           {/* Fallback: qualquer rota inexistente vai para login */}

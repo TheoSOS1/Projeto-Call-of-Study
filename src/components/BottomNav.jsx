@@ -1,12 +1,12 @@
 import { Link, useLocation } from "react-router-dom";
-import { Home, PlusCircle, Clock, Trophy, BookOpen } from "lucide-react";
+import { Home, PlusCircle, Clock, Trophy, UserCircle } from "lucide-react";
 
 const NAV_ITEMS = [
   { to: "/dashboard", icon: Home, label: "Início" },
   { to: "/historico", icon: Clock, label: "Histórico" },
   { to: "/lancamento", icon: PlusCircle, label: "Lançar", highlight: true },
   { to: "/ranking", icon: Trophy, label: "Ranking" },
-  { to: "/criterios", icon: BookOpen, label: "Regras" },
+  { to: "/perfil", icon: UserCircle, label: "Perfil" },
 ];
 
 export default function BottomNav() {
