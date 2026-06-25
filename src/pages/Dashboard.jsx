@@ -1,15 +1,20 @@
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { doc, getDoc } from "firebase/firestore";
 import { db } from "../services/firebase";
 import { useAuth } from "../contexts/AuthContext";
+import { calcularMultiplicador } from "../utils/calculadora";
 import {
   BookOpen,
-  Star,
   Trophy,
   LogOut,
   GraduationCap,
   Loader2,
+  Zap,
+  PlusCircle,
+  ArrowRight,
 } from "lucide-react";
+import BottomNav from "../components/BottomNav";
 
 const AREA_COLORS = {
   "Linguagens e Códigos": "from-pink-600 to-rose-500",
@@ -61,8 +66,16 @@ export default function Dashboard() {
   const gradiente = AREA_COLORS[dadosUsuario?.areaFoco] || "from-violet-600 to-purple-500";
   const badgeColor = AREA_BADGE_COLORS[dadosUsuario?.areaFoco] || "bg-violet-900/50 text-violet-300 border-violet-700";
 
+  const multiplicadorInfo = dadosUsuario?.disciplinaFacilidade
+    ? calcularMultiplicador(
+        dadosUsuario.disciplinaFacilidade,
+        dadosUsuario.disciplinaFacilidade,
+        dadosUsuario.minutosFacilidadeNestaSemana ?? 0
+      )
+    : null;
+
   return (
-    <div className="min-h-screen bg-gray-950 text-white">
+    <div className="min-h-screen bg-gray-950 text-white pb-24">
       {/* Header */}
       <header className="flex items-center justify-between px-4 pt-6 pb-4 max-w-lg mx-auto">
         <div className="flex items-center gap-2">
@@ -83,7 +96,7 @@ export default function Dashboard() {
       </header>
 
       {/* Conteúdo principal */}
-      <main className="px-4 pb-10 max-w-lg mx-auto flex flex-col gap-5 mt-2">
+      <main className="px-4 pb-4 max-w-lg mx-auto flex flex-col gap-5 mt-2">
         {/* Card de boas-vindas */}
         <div className={`rounded-2xl bg-gradient-to-br ${gradiente} p-5 shadow-lg`}>
           <p className="text-white/70 text-sm font-medium mb-1">Bem-vindo de volta 👋</p>
@@ -110,15 +123,28 @@ export default function Dashboard() {
             </p>
           </div>
 
-          {/* Minutos esta semana */}
+          {/* Minutos facilidade */}
           <div className="bg-gray-900 border border-gray-800 rounded-2xl p-4 flex flex-col gap-2">
             <div className="w-9 h-9 rounded-xl bg-violet-900/40 flex items-center justify-center">
-              <Star className="w-5 h-5 text-violet-400" />
+              <Zap className="w-5 h-5 text-violet-400" />
             </div>
-            <p className="text-gray-400 text-xs font-medium mt-1">Min. Facilidade / Semana</p>
+            <p className="text-gray-400 text-xs font-medium mt-1">Min. Facilidade</p>
             <p className="text-2xl font-bold text-white">
               {dadosUsuario?.minutosFacilidadeNestaSemana ?? 0}
             </p>
+            {multiplicadorInfo && (
+              <span
+                className={`text-xs font-semibold px-2 py-0.5 rounded-full w-fit ${
+                  multiplicadorInfo.tier === "boost"
+                    ? "bg-emerald-900/50 text-emerald-400"
+                    : multiplicadorInfo.tier === "fadiga"
+                    ? "bg-red-900/50 text-red-400"
+                    : "bg-gray-800 text-gray-400"
+                }`}
+              >
+                ×{multiplicadorInfo.multiplicador} {multiplicadorInfo.tier}
+              </span>
+            )}
           </div>
         </div>
 
@@ -137,14 +163,23 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* Placeholder para próximas features */}
-        <div className="bg-gray-900/50 border border-dashed border-gray-800 rounded-2xl p-6 flex flex-col items-center gap-2 text-center">
-          <BookOpen className="w-8 h-8 text-gray-700" />
-          <p className="text-gray-600 text-sm">
-            Suas sessões de estudo aparecerão aqui em breve.
-          </p>
-        </div>
+        {/* CTA — Lançar nova sessão */}
+        <Link
+          to="/lancamento"
+          className="flex items-center gap-3 bg-gradient-to-br from-violet-600 to-purple-600 rounded-2xl p-5 shadow-lg shadow-violet-900/30 active:scale-[0.98] transition-transform duration-150"
+        >
+          <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center shrink-0">
+            <PlusCircle className="w-6 h-6 text-white" />
+          </div>
+          <div className="flex-1">
+            <p className="text-white font-bold">Lançar nova sessão</p>
+            <p className="text-white/70 text-sm">Registre sua atividade de estudo</p>
+          </div>
+          <ArrowRight className="w-5 h-5 text-white/60" />
+        </Link>
       </main>
+
+      <BottomNav />
     </div>
   );
 }

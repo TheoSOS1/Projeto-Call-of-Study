@@ -5,6 +5,10 @@ import Login from "./pages/Login";
 import Cadastro from "./pages/Cadastro";
 import Dashboard from "./pages/Dashboard";
 import CompletarCadastro from "./pages/CompletarCadastro";
+import Lancamento from "./pages/Lancamento";
+import Historico from "./pages/Historico";
+import Ranking from "./pages/Ranking";
+import Criterios from "./pages/Criterios";
 
 export default function App() {
   return (
@@ -36,6 +40,24 @@ export default function App() {
                 <CompletarCadastro />
               </RotaProtegida>
             }
+          />
+
+          {/* Rotas protegidas — Core Loop */}
+          <Route
+            path="/lancamento"
+            element={<RotaProtegida><Lancamento /></RotaProtegida>}
+          />
+          <Route
+            path="/historico"
+            element={<RotaProtegida><Historico /></RotaProtegida>}
+          />
+          <Route
+            path="/ranking"
+            element={<RotaProtegida><Ranking /></RotaProtegida>}
+          />
+          <Route
+            path="/criterios"
+            element={<RotaProtegida><Criterios /></RotaProtegida>}
           />
 
           {/* Fallback: qualquer rota inexistente vai para login */}
