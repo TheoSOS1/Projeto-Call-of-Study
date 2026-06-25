@@ -4,6 +4,7 @@ import RotaProtegida from "./components/RotaProtegida";
 import Login from "./pages/Login";
 import Cadastro from "./pages/Cadastro";
 import Dashboard from "./pages/Dashboard";
+import CompletarCadastro from "./pages/CompletarCadastro";
 
 export default function App() {
   return (
@@ -17,12 +18,22 @@ export default function App() {
           <Route path="/login" element={<Login />} />
           <Route path="/cadastro" element={<Cadastro />} />
 
-          {/* Rota protegida */}
+          {/* Rota protegida - Dashboard */}
           <Route
             path="/dashboard"
             element={
               <RotaProtegida>
                 <Dashboard />
+              </RotaProtegida>
+            }
+          />
+
+          {/* Rota protegida - Completar cadastro (novos usuários Google) */}
+          <Route
+            path="/completar-cadastro"
+            element={
+              <RotaProtegida>
+                <CompletarCadastro />
               </RotaProtegida>
             }
           />

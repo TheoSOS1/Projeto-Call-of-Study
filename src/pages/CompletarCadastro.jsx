@@ -1,19 +1,15 @@
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
-import { createUserWithEmailAndPassword } from "firebase/auth";
+import { useNavigate } from "react-router-dom";
 import { doc, setDoc } from "firebase/firestore";
-import { auth, db } from "../services/firebase";
+import { db } from "../services/firebase";
+import { useAuth } from "../contexts/AuthContext";
 import {
-  User,
-  Mail,
-  Lock,
   BookOpen,
   GraduationCap,
   Star,
-  AlertCircle,
   ChevronDown,
-  Eye,
-  EyeOff,
+  AlertCircle,
+  CheckCircle2,
 } from "lucide-react";
 
 const AREAS_FOCO = [
@@ -96,93 +92,27 @@ function DisciplinaSelectField({ icon: Icon, label, value, onChange }) {
   );
 }
 
-function InputField({ icon: Icon, label, type, value, onChange, placeholder }) {
-  return (
-    <div className="flex flex-col gap-1.5">
-      <label className="text-gray-300 text-sm font-medium">{label}</label>
-      <div className="relative">
-        <Icon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
-        <input
-          type={type}
-          required
-          value={value}
-          onChange={onChange}
-          placeholder={placeholder}
-          className="w-full bg-gray-800 text-white placeholder-gray-600 rounded-xl pl-10 pr-4 py-3 text-sm border border-gray-700 focus:outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500 transition"
-        />
-      </div>
-    </div>
-  );
-}
-
-function PasswordField({ label, value, onChange, placeholder, visible, onToggle }) {
-  return (
-    <div className="flex flex-col gap-1.5">
-      <label className="text-gray-300 text-sm font-medium">{label}</label>
-      <div className="relative">
-        <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 pointer-events-none" />
-        <input
-          type={visible ? "text" : "password"}
-          required
-          value={value}
-          onChange={onChange}
-          placeholder={placeholder}
-          className="w-full bg-gray-800 text-white placeholder-gray-600 rounded-xl pl-10 pr-10 py-3 text-sm border border-gray-700 focus:outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500 transition"
-        />
-        <button
-          type="button"
-          onClick={onToggle}
-          className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-300 transition-colors"
-          tabIndex={-1}
-        >
-          {visible ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-        </button>
-      </div>
-    </div>
-  );
-}
-
-export default function Cadastro() {
+export default function CompletarCadastro() {
   const navigate = useNavigate();
-  const [nome, setNome] = useState("");
-  const [email, setEmail] = useState("");
-  const [senha, setSenha] = useState("");
-  const [confirmarSenha, setConfirmarSenha] = useState("");
-  const [mostrarSenha, setMostrarSenha] = useState(false);
-  const [mostrarConfirmar, setMostrarConfirmar] = useState(false);
+  const { user } = useAuth();
   const [areaFoco, setAreaFoco] = useState("");
   const [disciplinaFacilidade, setDisciplinaFacilidade] = useState("");
   const [erro, setErro] = useState("");
   const [carregando, setCarregando] = useState(false);
 
-  // Reseta disciplina ao mudar a área
   const handleAreaChange = (e) => {
     setAreaFoco(e.target.value);
   };
 
-  const handleCadastro = async (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setErro("");
-
-    if (senha.length < 6) {
-      setErro("A senha deve ter pelo menos 6 caracteres.");
-      return;
-    }
-
-    if (senha !== confirmarSenha) {
-      setErro("As senhas não coincidem.");
-      return;
-    }
-
     setCarregando(true);
-    try {
-      // 1. Cria o usuário no Firebase Auth
-      const { user } = await createUserWithEmailAndPassword(auth, email, senha);
 
-      // 2. Cria o documento no Firestore usando o uid como ID do documento
+    try {
       await setDoc(doc(db, "usuarios", user.uid), {
-        nome,
-        email,
+        nome: user.displayName || "Estudante",
+        email: user.email,
         areaFoco,
         disciplinaFacilidade,
         minutosFacilidadeNestaSemana: 0,
@@ -190,24 +120,15 @@ export default function Cadastro() {
       });
 
       navigate("/dashboard");
-    } catch (error) {
-      switch (error.code) {
-        case "auth/email-already-in-use":
-          setErro("Este e-mail já está cadastrado.");
-          break;
-        case "auth/invalid-email":
-          setErro("E-mail inválido.");
-          break;
-        case "auth/weak-password":
-          setErro("Senha muito fraca. Use pelo menos 6 caracteres.");
-          break;
-        default:
-          setErro("Erro ao criar conta. Tente novamente.");
-      }
+    } catch {
+      setErro("Erro ao salvar perfil. Tente novamente.");
     } finally {
       setCarregando(false);
     }
   };
+
+  // Nome do Google para exibir (primeiro nome)
+  const primeiroNome = user?.displayName?.split(" ")[0] || "estudante";
 
   return (
     <div className="min-h-screen bg-gray-950 flex flex-col items-center justify-center px-4 py-10">
@@ -217,53 +138,42 @@ export default function Cadastro() {
           <BookOpen className="text-white w-7 h-7" />
         </div>
         <h1 className="text-2xl font-bold text-white tracking-tight">
-          Criar conta
+          Quase lá, {primeiroNome}!
         </h1>
-        <p className="text-gray-400 text-sm">Junte-se ao grupo de estudos</p>
+        <p className="text-gray-400 text-sm text-center max-w-xs">
+          Complete seu perfil para personalizar sua experiência de estudos
+        </p>
       </div>
 
-      {/* Formulário */}
+      {/* Card */}
       <div className="w-full max-w-sm bg-gray-900 rounded-2xl p-6 shadow-xl border border-gray-800">
-        <form onSubmit={handleCadastro} className="flex flex-col gap-4">
-          <InputField
-            icon={User}
-            label="Nome completo"
-            type="text"
-            value={nome}
-            onChange={(e) => setNome(e.target.value)}
-            placeholder="Seu nome"
-          />
 
-          <InputField
-            icon={Mail}
-            label="E-mail"
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="seu@email.com"
-          />
+        {/* Info do Google */}
+        <div className="flex items-center gap-3 bg-gray-800/60 border border-gray-700 rounded-xl px-4 py-3 mb-5">
+          {user?.photoURL ? (
+            <img
+              src={user.photoURL}
+              alt="Foto do Google"
+              className="w-9 h-9 rounded-full border border-gray-600"
+            />
+          ) : (
+            <div className="w-9 h-9 rounded-full bg-violet-700 flex items-center justify-center text-white text-sm font-bold">
+              {primeiroNome[0]?.toUpperCase()}
+            </div>
+          )}
+          <div className="flex flex-col min-w-0">
+            <span className="text-white text-sm font-medium truncate">
+              {user?.displayName || "Usuário Google"}
+            </span>
+            <span className="text-gray-400 text-xs truncate">{user?.email}</span>
+          </div>
+          <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 ml-auto" />
+        </div>
 
-          <PasswordField
-            label="Senha"
-            value={senha}
-            onChange={(e) => setSenha(e.target.value)}
-            placeholder="Mín. 6 caracteres"
-            visible={mostrarSenha}
-            onToggle={() => setMostrarSenha((v) => !v)}
-          />
-
-          <PasswordField
-            label="Confirmar Senha"
-            value={confirmarSenha}
-            onChange={(e) => setConfirmarSenha(e.target.value)}
-            placeholder="Repita a senha"
-            visible={mostrarConfirmar}
-            onToggle={() => setMostrarConfirmar((v) => !v)}
-          />
-
+        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <SelectField
             icon={GraduationCap}
-            label="Área de Foco"
+            label="Área de Foco (ENEM)"
             value={areaFoco}
             onChange={handleAreaChange}
             options={AREAS_FOCO}
@@ -277,7 +187,6 @@ export default function Cadastro() {
             onChange={(e) => setDisciplinaFacilidade(e.target.value)}
           />
 
-          {/* Erro */}
           {erro && (
             <div className="flex items-center gap-2 bg-red-900/40 border border-red-700 text-red-300 rounded-xl px-4 py-3 text-sm">
               <AlertCircle className="w-4 h-4 shrink-0" />
@@ -288,25 +197,15 @@ export default function Cadastro() {
           <button
             type="submit"
             disabled={carregando}
-            className="w-full bg-violet-600 hover:bg-violet-500 disabled:opacity-60 disabled:cursor-not-allowed text-white font-semibold py-3 rounded-xl transition-colors duration-200 flex items-center justify-center"
+            className="w-full bg-violet-600 hover:bg-violet-500 disabled:opacity-60 disabled:cursor-not-allowed text-white font-semibold py-3 rounded-xl transition-colors duration-200 flex items-center justify-center mt-1"
           >
             {carregando ? (
               <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
             ) : (
-              "Criar conta"
+              "Entrar no Call of Study →"
             )}
           </button>
         </form>
-
-        <p className="text-center text-gray-500 text-sm mt-5">
-          Já tem conta?{" "}
-          <Link
-            to="/login"
-            className="text-violet-400 hover:text-violet-300 font-medium transition-colors"
-          >
-            Entrar
-          </Link>
-        </p>
       </div>
     </div>
   );
