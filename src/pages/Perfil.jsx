@@ -114,9 +114,7 @@ export default function Perfil() {
   );
   const emCooldown = diasParaLiberar > 0;
 
-  // Disciplinas disponíveis conforme a área selecionada no formulário de edição
-  const disciplinasDisponiveis = DISCIPLINAS_POR_AREA[novaArea] || [];
-
+  // Disciplinas: todas disponíveis, organizadas por área
   // ─── Salvar alterações de perfil ──────────────────────────────────────────
   const handleSalvarPerfil = async (e) => {
     e.preventDefault();
@@ -360,14 +358,15 @@ export default function Perfil() {
                     required
                     value={novaDisciplina}
                     onChange={(e) => setNovaDisciplina(e.target.value)}
-                    disabled={!novaArea}
-                    className="w-full bg-gray-800 text-white rounded-xl pl-10 pr-9 py-3 text-sm border border-gray-700 focus:outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500 transition appearance-none cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="w-full bg-gray-800 text-white rounded-xl pl-10 pr-9 py-3 text-sm border border-gray-700 focus:outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500 transition appearance-none cursor-pointer"
                   >
-                    <option value="" disabled>
-                      {novaArea ? "Selecione a disciplina" : "Escolha a área primeiro"}
-                    </option>
-                    {disciplinasDisponiveis.map((d) => (
-                      <option key={d} value={d}>{d}</option>
+                    <option value="" disabled>Selecione uma disciplina</option>
+                    {Object.entries(DISCIPLINAS_POR_AREA).map(([area, discs]) => (
+                      <optgroup key={area} label={area}>
+                        {discs.map((d) => (
+                          <option key={d} value={d}>{d}</option>
+                        ))}
+                      </optgroup>
                     ))}
                   </select>
                   <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 pointer-events-none" />
