@@ -50,8 +50,17 @@ function formatarHora(timestamp) {
 function detalhe(reg) {
   if (reg.tipo === "teoria") return `${reg.minutos} min`;
   if (reg.tipo === "questoes") return `${reg.acertos}/${reg.feitas} acertos`;
-  if (reg.tipo === "redacao") return `Nota ${reg.nota}`;
+  if (reg.tipo === "redacao") {
+    const parts = [`Nota ${reg.nota}`];
+    if (reg.tempo) parts.push(`${reg.tempo} min`);
+    return parts.join(" · ");
+  }
   return "";
+}
+
+function tituloRegistro(reg) {
+  if (reg.tipo === "redacao") return reg.tema || reg.disciplina || "Redação";
+  return reg.disciplina || "—";
 }
 
 export default function Historico() {
@@ -164,7 +173,7 @@ export default function Historico() {
                         </div>
                         <div className="flex-1 min-w-0">
                           <p className="text-white text-sm font-semibold truncate">
-                            {reg.disciplina}
+                            {tituloRegistro(reg)}
                           </p>
                           <p className="text-gray-500 text-xs">
                             {config.label} · {detalhe(reg)} · {formatarHora(reg.data)}

@@ -9,6 +9,7 @@ import {
   TrendingUp,
   Clock,
   Info,
+  Timer,
 } from "lucide-react";
 import BottomNav from "../components/BottomNav";
 
@@ -116,7 +117,38 @@ export default function Criterios() {
           <Row label="Nota 900" value="270 pts" />
           <Row label="Nota máxima (1000)" value="300 pts" accent="text-violet-400" />
 
-          {/* Cooldown semanal */}
+          {/* Multiplicador de Tempo */}
+          <div className="mt-4 mb-1">
+            <div className="flex items-center gap-2 mb-3">
+              <Timer className="w-4 h-4 text-purple-400" />
+              <span className="text-white text-sm font-bold">Multiplicador de Tempo</span>
+            </div>
+            <p className="text-gray-500 text-xs mb-3 leading-relaxed">
+              A zona ideal é entre <strong className="text-white">60 e 80 min</strong>.
+              Escrever mais rápido dá bônus; ultrapassar esse tempo gera penalidade.
+            </p>
+            <div className="flex flex-col gap-0.5">
+              {[
+                { label: "⚡ Veloz",   sub: "Menos de 45 min",  mult: "×1.4", color: "text-emerald-400", bg: "bg-emerald-900/40" },
+                { label: "🏃 Rápido",  sub: "45 a 59 min",      mult: "×1.2", color: "text-teal-400",    bg: "bg-teal-900/40" },
+                { label: "✓ Ideal",   sub: "60 a 80 min",      mult: "×1.0", color: "text-blue-400",    bg: "bg-blue-900/40" },
+                { label: "🐢 Lento",   sub: "81 a 100 min",    mult: "×0.9", color: "text-amber-400",  bg: "bg-amber-900/40" },
+                { label: "🔴 Devagar", sub: "Mais de 100 min",  mult: "×0.8", color: "text-red-400",    bg: "bg-red-900/40" },
+              ].map(({ label, sub, mult, color, bg }) => (
+                <div key={label} className="flex items-center gap-3 py-2.5 border-b border-gray-800 last:border-0">
+                  <div className={`w-8 h-8 rounded-lg ${bg} flex items-center justify-center shrink-0 text-xs`}>
+                    {label.split(" ")[0]}
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-white text-xs font-semibold">{label.split(" ").slice(1).join(" ")}</p>
+                    <p className="text-gray-600 text-xs">{sub}</p>
+                  </div>
+                  <span className={`${color} font-black text-base`}>{mult}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
           <div className="mt-4 bg-purple-950/50 border border-purple-800/60 rounded-xl p-3.5 flex items-start gap-3">
             <div className="w-8 h-8 rounded-lg bg-purple-900/60 flex items-center justify-center shrink-0">
               <Clock className="w-4 h-4 text-purple-400" />

@@ -54,9 +54,29 @@ export function isAntiChute(feitas, acertos) {
 }
 
 /**
+ * Multiplicador de tempo para Redação.
+ * Zona ideal: 60–80 min (×1.0).
+ * Mais rápido = bônus, mais lento = penalidade.
+ *
+ * @param {number} tempo - Tempo gasto na redação em minutos
+ * @returns {{ multiplicador: number, tier: "veloz"|"rapido"|"ideal"|"lento"|"devagar" }}
+ */
+export function calcularMultiplicadorRedacao(tempo) {
+  const t = tempo || 0;
+  if (t <= 0)   return { multiplicador: 1.0, tier: "ideal" };
+  if (t < 45)   return { multiplicador: 1.4, tier: "veloz" };
+  if (t < 60)   return { multiplicador: 1.2, tier: "rapido" };
+  if (t <= 80)  return { multiplicador: 1.0, tier: "ideal" };
+  if (t <= 100) return { multiplicador: 0.9, tier: "lento" };
+  return         { multiplicador: 0.8, tier: "devagar" };
+}
+
+/**
  * Calcula os pontos base SEM o multiplicador de facilidade.
+ * Para redação, o multiplicador de tempo já está aplicado aqui.
+ *
  * @param {"teoria"|"questoes"|"redacao"} tipo
- * @param {{ disciplina: string, minutos?: number, feitas?: number, acertos?: number, nota?: number }} dados
+ * @param {{ disciplina?: string, minutos?: number, feitas?: number, acertos?: number, nota?: number, tempo?: number }} dados
  * @param {string} areaFoco - Área de foco do usuário (do Firestore)
  * @returns {number}
  */
@@ -80,8 +100,10 @@ export function calcularPontosBase(tipo, dados, areaFoco = "") {
       return acertos * (foco ? 3 : 2);
     }
     case "redacao": {
-      // Nota * 0.3 (Max 300 pts) — sujeito a cooldown semanal
-      return (dados.nota || 0) * 0.3;
+      // Nota * 0.3 (max 300 pts base) × multiplicador de tempo
+      const base = (dados.nota || 0) * 0.3;
+      const { multiplicador } = calcularMultiplicadorRedacao(dados.tempo);
+      return base * multiplicador;
     }
     default:
       return 0;
@@ -90,6 +112,8 @@ export function calcularPontosBase(tipo, dados, areaFoco = "") {
 
 /**
  * Calcula o multiplicador de facilidade e o tier atual.
+ * Aplica-se APENAS para teoria e questões (redação usa multiplicador de tempo).
+ *
  * @param {string} disciplina - Disciplina que está sendo estudada
  * @param {string} disciplinaFacilidade - Disciplina de facilidade do usuário
  * @param {number} minutosFacilidadeNestaSemana - Minutos acumulados esta semana
@@ -104,18 +128,21 @@ export function calcularMultiplicador(
     return { multiplicador: 1, tier: null };
   }
   const min = minutosFacilidadeNestaSemana || 0;
-  // Tiers atualizados: Boost (≤240 min / 4h) | Normal (241–480 min / 8h) | Fadiga (>480 min)
+  // Tiers: Boost (≤240 min / 4h) | Normal (241–480 min / 8h) | Fadiga (>480 min)
   if (min <= 240) return { multiplicador: 1.5, tier: "boost" };
   if (min <= 480) return { multiplicador: 1.0, tier: "normal" };
   return { multiplicador: 0.5, tier: "fadiga" };
 }
 
 /**
- * Calcula a pontuação final aplicando o multiplicador de facilidade.
+ * Calcula a pontuação final.
+ * - Teoria / Questões: aplica multiplicador de facilidade.
+ * - Redação: o multiplicador de tempo já está embutido em calcularPontosBase.
+ *
  * @param {"teoria"|"questoes"|"redacao"} tipo
- * @param {{ disciplina: string, minutos?: number, feitas?: number, acertos?: number, nota?: number }} dados
- * @param {string} areaFoco - Área de foco do usuário
- * @param {string} disciplinaFacilidade - Disciplina de facilidade do usuário
+ * @param {{ disciplina?: string, minutos?: number, feitas?: number, acertos?: number, nota?: number, tempo?: number }} dados
+ * @param {string} areaFoco
+ * @param {string} disciplinaFacilidade
  * @param {number} minutosFacilidadeNestaSemana
  * @returns {number} Pontuação final arredondada
  */
@@ -127,6 +154,10 @@ export function calcularPontos(
   minutosFacilidadeNestaSemana
 ) {
   const base = calcularPontosBase(tipo, dados, areaFoco);
+
+  // Redação: multiplicador de tempo já aplicado no base — sem multiplicador de facilidade
+  if (tipo === "redacao") return Math.round(base);
+
   const { multiplicador } = calcularMultiplicador(
     dados.disciplina,
     disciplinaFacilidade,

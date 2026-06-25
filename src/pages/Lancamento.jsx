@@ -9,7 +9,6 @@ import {
   getDocs,
   query,
   where,
-  orderBy,
   limit,
   Timestamp,
   increment,
@@ -20,6 +19,7 @@ import {
   calcularPontos,
   calcularPontosBase,
   calcularMultiplicador,
+  calcularMultiplicadorRedacao,
   isAntiChute,
   getInicioSemanaAtual,
 } from "../utils/calculadora";
@@ -35,6 +35,7 @@ import {
   Clock,
   Loader2,
   ArrowRight,
+  FileText,
 } from "lucide-react";
 import BottomNav from "../components/BottomNav";
 
@@ -77,17 +78,33 @@ const DISCIPLINAS_POR_AREA = {
   Matemática: ["Matemática"],
 };
 
+// ─── Labels dos tiers de tempo da Redação ────────────────────────────────────
+const TIER_REDACAO = {
+  veloz:   { label: "Veloz",   color: "bg-emerald-900/60 text-emerald-400" },
+  rapido:  { label: "Rápido",  color: "bg-teal-900/60 text-teal-400" },
+  ideal:   { label: "Ideal",   color: "bg-blue-900/60 text-blue-400" },
+  lento:   { label: "Lento",   color: "bg-amber-900/60 text-amber-400" },
+  devagar: { label: "Devagar", color: "bg-red-900/60 text-red-400" },
+};
+
 export default function Lancamento() {
   const { user } = useAuth();
   const navigate = useNavigate();
 
   const [perfil, setPerfil] = useState(null);
   const [tipo, setTipo] = useState("teoria");
+
+  // ─── Campos de Teoria / Questões ─────────────────────────────────────────
   const [disciplina, setDisciplina] = useState("");
   const [minutos, setMinutos] = useState("");
   const [feitas, setFeitas] = useState("");
   const [acertos, setAcertos] = useState("");
+
+  // ─── Campos exclusivos de Redação ────────────────────────────────────────
+  const [tema, setTema] = useState("");
   const [nota, setNota] = useState("");
+  const [tempoRedacao, setTempoRedacao] = useState("");
+
   const [enviando, setEnviando] = useState(false);
   const [sucesso, setSucesso] = useState(false);
   const [erro, setErro] = useState("");
@@ -108,17 +125,35 @@ export default function Lancamento() {
     return novaSemana ? 0 : (perfil.minutosFacilidadeNestaSemana || 0);
   }, [perfil]);
 
+  // ─── Objeto de dados conforme o tipo ─────────────────────────────────────
   const dados = useMemo(() => {
-    if (!disciplina) return null;
-    if (tipo === "teoria") return { disciplina, minutos: Number(minutos) || 0 };
-    if (tipo === "questoes")
+    if (tipo === "teoria") {
+      if (!disciplina) return null;
+      return { disciplina, minutos: Number(minutos) || 0 };
+    }
+    if (tipo === "questoes") {
+      if (!disciplina) return null;
       return { disciplina, feitas: Number(feitas) || 0, acertos: Number(acertos) || 0 };
-    if (tipo === "redacao") return { disciplina, nota: Number(nota) || 0 };
+    }
+    if (tipo === "redacao") {
+      return { tema, nota: Number(nota) || 0, tempo: Number(tempoRedacao) || 0 };
+    }
     return null;
-  }, [tipo, disciplina, minutos, feitas, acertos, nota]);
+  }, [tipo, disciplina, minutos, feitas, acertos, nota, tema, tempoRedacao]);
 
+  // ─── Prévia de pontuação ──────────────────────────────────────────────────
   const preview = useMemo(() => {
     if (!dados || !perfil) return null;
+
+    if (tipo === "redacao") {
+      const tempo = Number(tempoRedacao) || 0;
+      if (tempo <= 0) return null; // precisa informar o tempo para mostrar prévia
+      const { multiplicador, tier } = calcularMultiplicadorRedacao(tempo);
+      const base = (dados.nota || 0) * 0.3;
+      const final = Math.round(base * multiplicador);
+      return { base: Math.round(base * 10) / 10, multiplicador, tier, final, antiChute: false, isRedacao: true };
+    }
+
     const base = calcularPontosBase(tipo, dados, perfil.areaFoco || "");
     const { multiplicador, tier } = calcularMultiplicador(
       disciplina,
@@ -129,26 +164,26 @@ export default function Lancamento() {
     const antiChute =
       tipo === "questoes" && dados.feitas > 0 && isAntiChute(dados.feitas, dados.acertos);
     return { base: Math.round(base * 10) / 10, multiplicador, tier, final, antiChute };
-  }, [dados, perfil, tipo, disciplina, minutosEfetivos]);
+  }, [dados, perfil, tipo, disciplina, minutosEfetivos, tempoRedacao]);
 
+  // ─── Validação do formulário ──────────────────────────────────────────────
   const formValido = useMemo(() => {
-    if (!disciplina) return false;
-    if (tipo === "teoria") return Number(minutos) > 0;
+    if (tipo === "teoria") return !!disciplina && Number(minutos) > 0;
     if (tipo === "questoes") {
       const f = Number(feitas);
       const a = Number(acertos);
-      return f > 0 && a >= 0 && a <= f;
+      return !!disciplina && f > 0 && a >= 0 && a <= f;
     }
     if (tipo === "redacao") {
       const n = Number(nota);
-      return n >= 0 && n <= 1000;
+      const t = Number(tempoRedacao);
+      return tema.trim().length > 0 && n >= 0 && n <= 1000 && t > 0;
     }
     return false;
-  }, [tipo, disciplina, minutos, feitas, acertos, nota]);
+  }, [tipo, disciplina, minutos, feitas, acertos, nota, tema, tempoRedacao]);
 
   /**
    * Verifica se o usuário já enviou uma redação nos últimos 7 dias (cooldown semanal).
-   * Usa a data da segunda-feira atual como referência (alinha ao reset de semana).
    */
   const verificarCooldownRedacao = async () => {
     const inicioSemana = getInicioSemanaAtual();
@@ -160,7 +195,7 @@ export default function Lancamento() {
       limit(1)
     );
     const snap = await getDocs(q);
-    return !snap.empty; // true = já enviou esta semana
+    return !snap.empty;
   };
 
   const handleSubmit = async (e) => {
@@ -201,15 +236,22 @@ export default function Lancamento() {
       batch.set(registroRef, {
         userId: user.uid,
         tipo,
-        disciplina,
         pontos,
         data: serverTimestamp(),
-        ...(tipo === "teoria" && { minutos: Number(minutos) }),
+        // ── Teoria ──
+        ...(tipo === "teoria" && { disciplina, minutos: Number(minutos) }),
+        // ── Questões ──
         ...(tipo === "questoes" && {
+          disciplina,
           feitas: Number(feitas),
           acertos: Number(acertos),
         }),
-        ...(tipo === "redacao" && { nota: Number(nota) }),
+        // ── Redação (sem disciplina — usa tema + tempo) ──
+        ...(tipo === "redacao" && {
+          tema: tema.trim(),
+          nota: Number(nota),
+          tempo: Number(tempoRedacao),
+        }),
       });
 
       // 2. Atualizar documento do usuário
@@ -218,7 +260,6 @@ export default function Lancamento() {
 
       if (tipo === "teoria" && disciplina === perfil.disciplinaFacilidade) {
         if (novaSemana) {
-          // Nova semana: resetar e iniciar contador
           updateData.minutosFacilidadeNestaSemana = Number(minutos);
           updateData.semanaInicio = serverTimestamp();
         } else {
@@ -231,8 +272,7 @@ export default function Lancamento() {
 
       // Atualizar perfil local para o próximo cálculo
       setPerfil((prev) => {
-        const isFacilidade =
-          tipo === "teoria" && disciplina === prev.disciplinaFacilidade;
+        const isFacilidade = tipo === "teoria" && disciplina === prev.disciplinaFacilidade;
         const novosMinutos = novaSemana
           ? Number(minutos)
           : (prev.minutosFacilidadeNestaSemana || 0) + Number(minutos);
@@ -254,6 +294,8 @@ export default function Lancamento() {
         setFeitas("");
         setAcertos("");
         setNota("");
+        setTema("");
+        setTempoRedacao("");
       }, 2500);
     } catch (err) {
       console.error(err);
@@ -285,10 +327,13 @@ export default function Lancamento() {
                   type="button"
                   onClick={() => {
                     setTipo(id);
+                    setDisciplina("");
                     setMinutos("");
                     setFeitas("");
                     setAcertos("");
                     setNota("");
+                    setTema("");
+                    setTempoRedacao("");
                     setErro("");
                   }}
                   className={`flex flex-col items-center gap-2 p-3.5 rounded-2xl border transition-all duration-200 ${
@@ -297,14 +342,8 @@ export default function Lancamento() {
                       : "bg-gray-900 border-gray-800 hover:border-gray-700"
                   }`}
                 >
-                  <Icon
-                    className={`w-5 h-5 ${active ? "text-white" : "text-gray-500"}`}
-                  />
-                  <span
-                    className={`text-xs font-bold ${
-                      active ? "text-white" : "text-gray-400"
-                    }`}
-                  >
+                  <Icon className={`w-5 h-5 ${active ? "text-white" : "text-gray-500"}`} />
+                  <span className={`text-xs font-bold ${active ? "text-white" : "text-gray-400"}`}>
                     {label}
                   </span>
                 </button>
@@ -314,41 +353,40 @@ export default function Lancamento() {
         </div>
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-          {/* Disciplina */}
-          <div className="flex flex-col gap-1.5">
-            <label className="text-gray-300 text-sm font-medium">Disciplina</label>
-            <div className="relative">
-              <BookOpen className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 pointer-events-none" />
-              <select
-                required
-                value={disciplina}
-                onChange={(e) => setDisciplina(e.target.value)}
-                className="w-full bg-gray-800 text-white rounded-xl pl-10 pr-9 py-3 text-sm border border-gray-700 focus:outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500 transition appearance-none cursor-pointer"
-              >
-                <option value="" disabled>
-                  Selecione a disciplina
-                </option>
-                {Object.entries(DISCIPLINAS_POR_AREA).map(([area, discs]) => (
-                  <optgroup key={area} label={area}>
-                    {discs.map((d) => (
-                      <option key={d} value={d}>
-                        {d}
-                      </option>
-                    ))}
-                  </optgroup>
-                ))}
-              </select>
-              <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 pointer-events-none" />
-            </div>
-            {disciplina && perfil?.disciplinaFacilidade === disciplina && (
-              <p className="text-amber-400 text-xs flex items-center gap-1.5">
-                <Star className="w-3.5 h-3.5 fill-amber-400" />
-                Sua disciplina de facilidade — multiplicador ativo
-              </p>
-            )}
-          </div>
 
-          {/* Campos por tipo */}
+          {/* ── Disciplina: só para Teoria e Questões ─────────────────────── */}
+          {tipo !== "redacao" && (
+            <div className="flex flex-col gap-1.5">
+              <label className="text-gray-300 text-sm font-medium">Disciplina</label>
+              <div className="relative">
+                <BookOpen className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 pointer-events-none" />
+                <select
+                  required
+                  value={disciplina}
+                  onChange={(e) => setDisciplina(e.target.value)}
+                  className="w-full bg-gray-800 text-white rounded-xl pl-10 pr-9 py-3 text-sm border border-gray-700 focus:outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500 transition appearance-none cursor-pointer"
+                >
+                  <option value="" disabled>Selecione a disciplina</option>
+                  {Object.entries(DISCIPLINAS_POR_AREA).map(([area, discs]) => (
+                    <optgroup key={area} label={area}>
+                      {discs.map((d) => (
+                        <option key={d} value={d}>{d}</option>
+                      ))}
+                    </optgroup>
+                  ))}
+                </select>
+                <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 pointer-events-none" />
+              </div>
+              {disciplina && perfil?.disciplinaFacilidade === disciplina && (
+                <p className="text-amber-400 text-xs flex items-center gap-1.5">
+                  <Star className="w-3.5 h-3.5 fill-amber-400" />
+                  Sua disciplina de facilidade — multiplicador ativo
+                </p>
+              )}
+            </div>
+          )}
+
+          {/* ── Campos de Teoria ──────────────────────────────────────────── */}
           {tipo === "teoria" && (
             <div className="flex flex-col gap-1.5">
               <label className="text-gray-300 text-sm font-medium">
@@ -374,13 +412,12 @@ export default function Lancamento() {
             </div>
           )}
 
+          {/* ── Campos de Questões ────────────────────────────────────────── */}
           {tipo === "questoes" && (
             <>
               <div className="grid grid-cols-2 gap-3">
                 <div className="flex flex-col gap-1.5">
-                  <label className="text-gray-300 text-sm font-medium">
-                    Feitas
-                  </label>
+                  <label className="text-gray-300 text-sm font-medium">Feitas</label>
                   <input
                     type="number"
                     min="1"
@@ -392,9 +429,7 @@ export default function Lancamento() {
                   />
                 </div>
                 <div className="flex flex-col gap-1.5">
-                  <label className="text-gray-300 text-sm font-medium">
-                    Acertos
-                  </label>
+                  <label className="text-gray-300 text-sm font-medium">Acertos</label>
                   <input
                     type="number"
                     min="0"
@@ -434,34 +469,71 @@ export default function Lancamento() {
             </>
           )}
 
+          {/* ── Campos de Redação ─────────────────────────────────────────── */}
           {tipo === "redacao" && (
-            <div className="flex flex-col gap-1.5">
-              <label className="text-gray-300 text-sm font-medium">
-                Nota da redação (0–1000)
-              </label>
-              <div className="relative">
-                <PenTool className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
-                <input
-                  type="number"
-                  min="0"
-                  max="1000"
-                  step="10"
-                  required
-                  value={nota}
-                  onChange={(e) => setNota(e.target.value)}
-                  placeholder="Ex: 720"
-                  className="w-full bg-gray-800 text-white placeholder-gray-600 rounded-xl pl-10 pr-4 py-3 text-sm border border-gray-700 focus:outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500 transition"
-                />
+            <div className="flex flex-col gap-4">
+              {/* Tema */}
+              <div className="flex flex-col gap-1.5">
+                <label className="text-gray-300 text-sm font-medium">Tema da redação</label>
+                <div className="relative">
+                  <FileText className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+                  <input
+                    type="text"
+                    required
+                    value={tema}
+                    onChange={(e) => setTema(e.target.value)}
+                    placeholder="Ex: Desafios da mobilidade urbana"
+                    maxLength={120}
+                    className="w-full bg-gray-800 text-white placeholder-gray-600 rounded-xl pl-10 pr-4 py-3 text-sm border border-gray-700 focus:outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500 transition"
+                  />
+                </div>
               </div>
-              {/* Aviso de cooldown na própria tela de redação */}
-              <div className="flex items-center gap-2 text-purple-400 text-xs mt-0.5">
+
+              {/* Nota e Tempo lado a lado */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-gray-300 text-sm font-medium">Nota (0–1000)</label>
+                  <div className="relative">
+                    <PenTool className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+                    <input
+                      type="number"
+                      min="0"
+                      max="1000"
+                      step="10"
+                      required
+                      value={nota}
+                      onChange={(e) => setNota(e.target.value)}
+                      placeholder="Ex: 720"
+                      className="w-full bg-gray-800 text-white placeholder-gray-600 rounded-xl pl-10 pr-2 py-3 text-sm border border-gray-700 focus:outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500 transition"
+                    />
+                  </div>
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-gray-300 text-sm font-medium">Tempo (min)</label>
+                  <div className="relative">
+                    <Clock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+                    <input
+                      type="number"
+                      min="1"
+                      required
+                      value={tempoRedacao}
+                      onChange={(e) => setTempoRedacao(e.target.value)}
+                      placeholder="Ex: 65"
+                      className="w-full bg-gray-800 text-white placeholder-gray-600 rounded-xl pl-10 pr-2 py-3 text-sm border border-gray-700 focus:outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500 transition"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Aviso de cooldown */}
+              <div className="flex items-center gap-2 text-purple-400 text-xs">
                 <Clock className="w-3.5 h-3.5 shrink-0" />
                 Limite: 1 redação por semana (reseta toda segunda-feira)
               </div>
             </div>
           )}
 
-          {/* Prévia de pontos */}
+          {/* ── Prévia de pontos ──────────────────────────────────────────── */}
           {preview && formValido && !preview.antiChute && (
             <div className="bg-gray-900 border border-gray-800 rounded-2xl p-4">
               <p className="text-gray-500 text-xs font-semibold uppercase tracking-wide mb-3">
@@ -470,13 +542,24 @@ export default function Lancamento() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-gray-500 text-xs">Base</p>
-                  <p className="text-white text-sm font-semibold">
-                    {preview.base} pts
-                  </p>
+                  <p className="text-white text-sm font-semibold">{preview.base} pts</p>
                 </div>
-                {preview.tier && (
-                  <div className="text-center">
-                    <p className="text-gray-500 text-xs mb-1">Mult.</p>
+
+                {/* Multiplicador */}
+                <div className="text-center">
+                  <p className="text-gray-500 text-xs mb-1">Mult.</p>
+                  {preview.isRedacao ? (
+                    // Tier de tempo da redação
+                    <span
+                      className={`text-xs font-bold px-2.5 py-1 rounded-full ${
+                        TIER_REDACAO[preview.tier]?.color || "bg-gray-800 text-gray-400"
+                      }`}
+                    >
+                      ×{preview.multiplicador}{" "}
+                      {TIER_REDACAO[preview.tier]?.label}
+                    </span>
+                  ) : preview.tier ? (
+                    // Tier de facilidade (teoria/questões)
                     <span
                       className={`text-xs font-bold px-2.5 py-1 rounded-full ${
                         preview.tier === "boost"
@@ -488,15 +571,31 @@ export default function Lancamento() {
                     >
                       ×{preview.multiplicador}
                     </span>
-                  </div>
-                )}
+                  ) : null}
+                </div>
+
                 <div className="text-right">
                   <p className="text-gray-500 text-xs">Total</p>
-                  <p className="text-2xl font-black text-violet-400">
-                    +{preview.final}
-                  </p>
+                  <p className="text-2xl font-black text-violet-400">+{preview.final}</p>
                 </div>
               </div>
+
+              {/* Mensagens de contexto */}
+              {preview.isRedacao && preview.tier !== "ideal" && (
+                <p
+                  className={`text-xs flex items-center gap-1.5 mt-2.5 border-t border-gray-800 pt-2.5 ${
+                    ["veloz", "rapido"].includes(preview.tier)
+                      ? "text-emerald-400"
+                      : "text-amber-400"
+                  }`}
+                >
+                  {["veloz", "rapido"].includes(preview.tier) ? (
+                    <><Zap className="w-3 h-3" /> Bônus por velocidade — você ficou abaixo de 1h!</>
+                  ) : (
+                    <><AlertTriangle className="w-3 h-3" /> Penalidade — redação acima de 80 min</>
+                  )}
+                </p>
+              )}
               {preview.tier === "boost" && (
                 <p className="text-emerald-400 text-xs flex items-center gap-1.5 mt-2.5 border-t border-gray-800 pt-2.5">
                   <Zap className="w-3 h-3" />
