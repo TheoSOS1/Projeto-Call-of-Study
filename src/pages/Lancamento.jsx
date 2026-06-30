@@ -94,11 +94,12 @@ export default function Lancamento() {
   const [perfil, setPerfil] = useState(null);
   const [tipo, setTipo] = useState("teoria");
 
-  // ─── Campos de Teoria / Questões ─────────────────────────────────────────
+  // ─── Campos de Teoria / Questões ────────────────────────────────────────────────────
   const [disciplina, setDisciplina] = useState("");
   const [minutos, setMinutos] = useState("");
   const [feitas, setFeitas] = useState("");
   const [acertos, setAcertos] = useState("");
+  const [dificuldade, setDificuldade] = useState("medio");
 
   // ─── Campos exclusivos de Redação ────────────────────────────────────────
   const [tema, setTema] = useState("");
@@ -125,7 +126,7 @@ export default function Lancamento() {
     return novaSemana ? 0 : (perfil.minutosFacilidadeNestaSemana || 0);
   }, [perfil]);
 
-  // ─── Objeto de dados conforme o tipo ─────────────────────────────────────
+  // ─── Objeto de dados conforme o tipo ───────────────────────────────────────────
   const dados = useMemo(() => {
     if (tipo === "teoria") {
       if (!disciplina) return null;
@@ -133,13 +134,13 @@ export default function Lancamento() {
     }
     if (tipo === "questoes") {
       if (!disciplina) return null;
-      return { disciplina, feitas: Number(feitas) || 0, acertos: Number(acertos) || 0 };
+      return { disciplina, feitas: Number(feitas) || 0, acertos: Number(acertos) || 0, dificuldade };
     }
     if (tipo === "redacao") {
       return { tema, nota: Number(nota) || 0, tempo: Number(tempoRedacao) || 0 };
     }
     return null;
-  }, [tipo, disciplina, minutos, feitas, acertos, nota, tema, tempoRedacao]);
+  }, [tipo, disciplina, minutos, feitas, acertos, nota, tema, tempoRedacao, dificuldade]);
 
   // ─── Prévia de pontuação ──────────────────────────────────────────────────
   const preview = useMemo(() => {
@@ -245,6 +246,7 @@ export default function Lancamento() {
           disciplina,
           feitas: Number(feitas),
           acertos: Number(acertos),
+          dificuldade, // "facil" | "medio" | "dificil"
         }),
         // ── Redação (sem disciplina — usa tema + tempo) ──
         ...(tipo === "redacao" && {
@@ -293,6 +295,7 @@ export default function Lancamento() {
         setMinutos("");
         setFeitas("");
         setAcertos("");
+        setDificuldade("medio");
         setNota("");
         setTema("");
         setTempoRedacao("");
@@ -331,6 +334,7 @@ export default function Lancamento() {
                     setMinutos("");
                     setFeitas("");
                     setAcertos("");
+                    setDificuldade("medio");
                     setNota("");
                     setTema("");
                     setTempoRedacao("");
@@ -466,6 +470,41 @@ export default function Lancamento() {
                   )}
                 </div>
               )}
+
+              {/* Seletor de dificuldade */}
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  Dificuldade das questões
+                </label>
+                <div className="grid grid-cols-3 gap-2">
+                  {[
+                    { valor: "facil",   rotulo: "Fácil",   cor: "emerald", descricao: "×0.7" },
+                    { valor: "medio",   rotulo: "Médio",   cor: "amber",   descricao: "×1.0" },
+                    { valor: "dificil", rotulo: "Difícil", cor: "red",     descricao: "×1.5" },
+                  ].map(({ valor, rotulo, cor, descricao }) => (
+                    <button
+                      key={valor}
+                      type="button"
+                      onClick={() => setDificuldade(valor)}
+                      className={`
+                        flex flex-col items-center py-3 px-2 rounded-xl border transition-all
+                        ${
+                          dificuldade === valor
+                            ? cor === "emerald"
+                              ? "bg-emerald-900/40 border-emerald-500 text-emerald-300"
+                              : cor === "amber"
+                              ? "bg-amber-900/40 border-amber-500 text-amber-300"
+                              : "bg-red-900/40 border-red-500 text-red-300"
+                            : "bg-gray-800 border-gray-700 text-gray-400 hover:border-gray-500"
+                        }
+                      `}
+                    >
+                      <span className="text-sm font-semibold">{rotulo}</span>
+                      <span className="text-xs mt-0.5 opacity-75">{descricao}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
             </>
           )}
 

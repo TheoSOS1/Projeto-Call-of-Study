@@ -36,6 +36,7 @@ firebase-debug.log
 firestore-debug.log
 ui-debug.log
 database-debug.log
+serviceAccount.json
 
 # PWA / Service Worker (arquivos gerados)
 public/sw.js

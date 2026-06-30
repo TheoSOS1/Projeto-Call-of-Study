@@ -103,6 +103,43 @@ export default function Criterios() {
               bateria é zerada. Não adianta chutar!
             </p>
           </div>
+
+          {/* Multiplicador de Dificuldade */}
+          <div className="mt-4">
+            <div className="flex items-center gap-2 mb-3">
+              <Zap className="w-4 h-4 text-amber-400" />
+              <span className="text-white text-sm font-bold">Dificuldade das Questões</span>
+            </div>
+            <p className="text-gray-500 text-xs mb-3 leading-relaxed">
+              Ao lançar uma bateria, escolha a dificuldade das questões. O
+              multiplicador é aplicado <strong className="text-white">após</strong>{" "}
+              o cálculo base — e a regra anti-chute continua valendo
+              independentemente da dificuldade escolhida.
+            </p>
+            <div className="flex flex-col gap-0.5">
+              {[
+                { label: "🟢 Fácil",   sub: "Questões mais simples",  mult: "×0.7", color: "text-emerald-400", bg: "bg-emerald-900/40" },
+                { label: "🟡 Médio",   sub: "Dificuldade padrão",     mult: "×1.0", color: "text-amber-400",   bg: "bg-amber-900/40" },
+                { label: "🔴 Difícil", sub: "Questões desafiadoras",  mult: "×1.5", color: "text-red-400",     bg: "bg-red-900/40" },
+              ].map(({ label, sub, mult, color, bg }) => (
+                <div key={label} className="flex items-center gap-3 py-2.5 border-b border-gray-800 last:border-0">
+                  <div className={`w-8 h-8 rounded-lg ${bg} flex items-center justify-center shrink-0 text-xs`}>
+                    {label.split(" ")[0]}
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-white text-xs font-semibold">{label.split(" ").slice(1).join(" ")}</p>
+                    <p className="text-gray-600 text-xs">{sub}</p>
+                  </div>
+                  <span className={`${color} font-black text-base`}>{mult}</span>
+                </div>
+              ))}
+            </div>
+            <p className="text-gray-600 text-xs mt-3 leading-relaxed">
+              💡 Fácil tem penalidade (×0.7) para incentivar o foco no que
+              realmente importa. Difícil tem bônus (×1.5) para recompensar o
+              desafio.
+            </p>
+          </div>
         </Card>
 
         {/* Redação */}

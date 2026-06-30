@@ -1,5 +1,6 @@
 {
   "hosting": {
+    "site": "call-of-study",
     "public": "dist",
     "ignore": [
       "firebase.json",

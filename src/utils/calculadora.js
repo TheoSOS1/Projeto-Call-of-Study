@@ -3,6 +3,13 @@
  * Funções JavaScript puras, sem dependências React.
  */
 
+// Multiplicadores de dificuldade para questões
+export const MULTIPLICADORES_DIFICULDADE = {
+  facil:   0.7,
+  medio:   1.0,
+  dificil: 1.5,
+};
+
 /**
  * Verifica se a disciplina pertence à Área de Foco do usuário.
  * O bônus agora é dinâmico: qualquer matéria da areaFoco recebe peso especial.
@@ -97,7 +104,10 @@ export function calcularPontosBase(tipo, dados, areaFoco = "") {
       if (isAntiChute(feitas, acertos)) return 0;
       // Pontuação apenas por ACERTO (sem ponto por questão feita)
       // Acerto comum = +2 pts | Acerto da Área de Foco = +3 pts
-      return acertos * (foco ? 3 : 2);
+      // Multiplicador de dificuldade: registros sem campo usam 1.0 (retrocompatível)
+      const mult = MULTIPLICADORES_DIFICULDADE[dados.dificuldade] ?? 1.0;
+      const pontosBase = acertos * (foco ? 3 : 2);
+      return Math.round(pontosBase * mult);
     }
     case "redacao": {
       // Nota * 0.3 (max 300 pts base) × multiplicador de tempo
