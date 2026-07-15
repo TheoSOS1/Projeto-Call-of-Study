@@ -13,6 +13,9 @@ import {
   Zap,
   PlusCircle,
   ArrowRight,
+  Bell,
+  X,
+  ShieldCheck,
 } from "lucide-react";
 import BottomNav from "../components/BottomNav";
 
@@ -35,6 +38,8 @@ export default function Dashboard() {
 
   const [dadosUsuario, setDadosUsuario] = useState(null);
   const [carregando, setCarregando] = useState(true);
+  const [aviso, setAviso] = useState(null);
+  const [avisoFechado, setAvisoFechado] = useState(false);
 
   useEffect(() => {
     if (!user) return;
@@ -53,7 +58,17 @@ export default function Dashboard() {
       }
     }
 
+    async function buscarAviso() {
+      try {
+        const snap = await getDoc(doc(db, "config", "aviso"));
+        if (snap.exists()) setAviso(snap.data());
+      } catch {
+        // silently ignore
+      }
+    }
+
     buscarDados();
+    buscarAviso();
   }, [user]);
 
   // ─── Hooks ANTES de qualquer return condicional (React Rules of Hooks) ───
@@ -121,8 +136,36 @@ export default function Dashboard() {
             <span className={`text-xs font-semibold px-3 py-1 rounded-full border ${badgeColor}`}>
               {dadosUsuario?.areaFoco}
             </span>
+            {user?.email === "theodesouzaoliveirasantos@gmail.com" && (
+              <Link
+                to="/admin"
+                className="flex items-center gap-1 text-xs font-semibold px-3 py-1 rounded-full border bg-white/10 border-white/30 text-white/80 hover:bg-white/20 transition-colors"
+              >
+                <ShieldCheck className="w-3 h-3" />
+                Admin
+              </Link>
+            )}
           </div>
         </div>
+
+        {/* Banner de aviso global */}
+        {aviso && !avisoFechado && (
+          <div className="bg-amber-900/20 border border-amber-700/40 rounded-2xl p-4 flex gap-3 items-start">
+            <div className="w-8 h-8 rounded-xl bg-amber-900/40 flex items-center justify-center shrink-0">
+              <Bell className="w-4 h-4 text-amber-400" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-amber-300 font-bold text-sm">{aviso.titulo}</p>
+              <p className="text-amber-200/70 text-xs mt-1 leading-relaxed">{aviso.texto}</p>
+            </div>
+            <button
+              onClick={() => setAvisoFechado(true)}
+              className="text-amber-600 hover:text-amber-400 transition-colors shrink-0"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        )}
 
         {/* Cards de estatísticas */}
         <div className="grid grid-cols-2 gap-3">

@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "./contexts/AuthContext";
 import RotaProtegida from "./components/RotaProtegida";
+import RotaAdmin from "./components/RotaAdmin";
 import Login from "./pages/Login";
 import Cadastro from "./pages/Cadastro";
 import Dashboard from "./pages/Dashboard";
@@ -10,6 +11,7 @@ import Historico from "./pages/Historico";
 import Ranking from "./pages/Ranking";
 import Criterios from "./pages/Criterios";
 import Perfil from "./pages/Perfil";
+import Admin from "./pages/Admin";
 
 export default function App() {
   return (
@@ -63,6 +65,16 @@ export default function App() {
           <Route
             path="/perfil"
             element={<RotaProtegida><Perfil /></RotaProtegida>}
+          />
+
+          {/* Rota exclusiva do administrador */}
+          <Route
+            path="/admin"
+            element={
+              <RotaAdmin>
+                <Admin />
+              </RotaAdmin>
+            }
           />
 
           {/* Fallback: qualquer rota inexistente vai para login */}
